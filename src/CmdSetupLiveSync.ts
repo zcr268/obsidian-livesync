@@ -1,4 +1,4 @@
-import { type EntryDoc, type ObsidianLiveSyncSettings, LOG_LEVEL, DEFAULT_SETTINGS } from "./lib/src/types";
+import {type EntryDoc, LOG_LEVEL} from './lib/src/types'
 import { configURIBase } from "./types";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
@@ -8,6 +8,7 @@ import { LiveSyncCommands } from "./LiveSyncCommands";
 import { delay } from "./lib/src/utils";
 import { confirmWithMessage } from "./dialogs";
 import { Platform } from "./deps";
+import {DEFAULT_SETTINGS, type ObsidianLiveSyncSettings} from './Base/Settings'
 
 export class SetupLiveSync extends LiveSyncCommands {
     onunload() { }

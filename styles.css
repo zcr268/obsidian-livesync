@@ -98,9 +98,11 @@
     --slsmessage: "";
 }
 
-.CodeMirror-wrap::before,
+
 .cm-s-obsidian>.cm-editor::before,
-.canvas-wrapper::before {
+.markdown-reading-view>.markdown-rendered::before,
+.view-content:has(.cm-s-obsidian>.cm-editor)::before
+{
     content: attr(data-log);
     text-align: right;
     white-space: pre-wrap;
@@ -108,8 +110,8 @@
     border-radius: 4px;
     /* border:1px solid --background-modifier-border; */
     display: inline-block;
-    top: 8px;
-    color: --text-normal;
+    top: 4rem;
+    right: 2rem;
     opacity: 0.5;
     font-size: 80%;
     -webkit-filter: grayscale(100%);

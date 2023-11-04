@@ -1,33 +1,8 @@
-import {StatusBar} from './Loader/StatusBar'
-
 const isDebug = false;
 
 import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "./deps";
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl } from "./deps";
-import {
-    type EntryDoc,
-    type LoadedEntry,
-    type diff_check_result,
-    type diff_result_leaf,
-    type EntryBody,
-    LOG_LEVEL,
-    VER,
-    type diff_result,
-    FLAGMD_REDFLAG,
-    SYNCINFO_ID,
-    SALT_OF_PASSPHRASE,
-    type ConfigPassphraseStore,
-    type CouchDBConnection,
-    FLAGMD_REDFLAG2,
-    FLAGMD_REDFLAG3,
-    PREFIXMD_LOGFILE,
-    type DatabaseConnectingStatus,
-    type EntryHasPath,
-    type DocumentID,
-    type FilePathWithPrefix,
-    type FilePath,
-    type AnyEntry,
-} from './lib/src/types'
+import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry } from "./lib/src/types";
 import { type InternalFileInfo, type queueItem, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
 import { arrayToChunkedArray, getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger, setGlobalLogFunction } from "./lib/src/logger";
@@ -57,8 +32,6 @@ import { confirmWithMessage } from "./dialogs";
 import { GlobalHistoryView, VIEW_TYPE_GLOBAL_HISTORY } from "./GlobalHistoryView";
 import { LogPaneView, VIEW_TYPE_LOG } from "./LogPaneView";
 import { mapAllTasksWithConcurrencyLimit, processAllTasksWithConcurrencyLimit } from "./lib/src/task";
-import {LoaderManager} from './Loader/BaseLoader'
-import {Settings, type ObsidianLiveSyncSettings, DEFAULT_SETTINGS} from './Base/Settings'
 
 setNoticeClass(Notice);
 
@@ -72,9 +45,7 @@ logStore.intercept(e => e.slice(Math.min(e.length - 200, 0)));
 export default class ObsidianLiveSyncPlugin extends Plugin
     implements LiveSyncLocalDBEnv, LiveSyncReplicatorEnv {
 
-    get settings(): ObsidianLiveSyncSettings { return Settings.s.settings}
-
-    set settings(value: ObsidianLiveSyncSettings) {}
+    settings: ObsidianLiveSyncSettings;
     localDatabase: LiveSyncLocalDB;
     replicator: LiveSyncDBReplicator;
 
@@ -485,7 +456,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
 
     /**
-     * Scan status
+     * Scan status 
      */
     async scanStat() {
         const notes: { path: string, mtime: number }[] = [];
@@ -506,19 +477,203 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
 
     async onload() {
-        await LoaderManager.onloadAll(this)
+        logStore.subscribe(e => this.addLog(e.message, e.level, e.key));
+        Logger("loading plugin");
+        //@ts-ignore
+        const manifestVersion: string = MANIFEST_VERSION || "0.0.0";
+        //@ts-ignore
+        const packageVersion: string = PACKAGE_VERSION || "0.0.0";
 
-        const apply = () => {
-            const now = new Date().getTime()
-            Logger(`当前msg:${now}\ntest:msg`)
-            StatusBar.bar.setStatusBarText(`当前msg:${now}\ntest:msg`, `当前log:${now}\ntest:log`)
-            setTimeout(apply, 5000)
+        this.manifestVersion = manifestVersion;
+        this.packageVersion = packageVersion;
+
+        Logger(`Self-hosted LiveSync v${manifestVersion} ${packageVersion} `);
+        const lsKey = "obsidian-live-sync-ver" + this.getVaultName();
+        const last_version = localStorage.getItem(lsKey);
+        await this.loadSettings();
+
+        const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
+        if (lastVersion > this.settings.lastReadUpdates) {
+            Logger("Self-hosted LiveSync has undergone a major upgrade. Please open the setting dialog, and check the information pane.", LOG_LEVEL.NOTICE);
         }
-        apply()
-    }
+        //@ts-ignore
+        if (this.app.isMobile) {
+            this.isMobile = true;
+            this.settings.disableRequestURI = true;
+        }
+        if (last_version && Number(last_version) < VER) {
+            this.settings.liveSync = false;
+            this.settings.syncOnSave = false;
+            this.settings.syncOnStart = false;
+            this.settings.syncOnFileOpen = false;
+            this.settings.syncAfterMerge = false;
+            this.settings.periodicReplication = false;
+            this.settings.versionUpFlash = "Self-hosted LiveSync has been upgraded and some behaviors have changed incompatibly. All automatic synchronization is now disabled temporary. Ensure that other devices are also upgraded, and enable synchronization again.";
+            this.saveSettings();
+        }
+        localStorage.setItem(lsKey, `${VER}`);
+        await this.openDatabase();
+        this.watchWorkspaceOpen = debounce(this.watchWorkspaceOpen.bind(this), 1000, false);
+        this.watchWindowVisibility = debounce(this.watchWindowVisibility.bind(this), 1000, false);
+        this.watchOnline = debounce(this.watchOnline.bind(this), 500, false);
 
-    onunload() {
+        this.parseReplicationResult = this.parseReplicationResult.bind(this);
 
+        this.loadQueuedFiles = this.loadQueuedFiles.bind(this);
+
+        this.triggerRealizeSettingSyncMode = debounce(this.triggerRealizeSettingSyncMode.bind(this), 1000);
+
+        this.statusBar = this.addStatusBarItem();
+        this.statusBar.addClass("syncstatusbar");
+
+        addIcon(
+            "replicate",
+            `<g transform="matrix(1.15 0 0 1.15 -8.31 -9.52)" fill="currentColor" fill-rule="evenodd">
+            <path d="m85 22.2c-0.799-4.74-4.99-8.37-9.88-8.37-0.499 0-1.1 0.101-1.6 0.101-2.4-3.03-6.09-4.94-10.3-4.94-6.09 0-11.2 4.14-12.8 9.79-5.59 1.11-9.78 6.05-9.78 12 0 6.76 5.39 12.2 12 12.2h29.9c5.79 0 10.1-4.74 10.1-10.6 0-4.84-3.29-8.88-7.68-10.2zm-2.99 14.7h-29.5c-2.3-0.202-4.29-1.51-5.29-3.53-0.899-2.12-0.699-4.54 0.698-6.46 1.2-1.61 2.99-2.52 4.89-2.52 0.299 0 0.698 0 0.998 0.101l1.8 0.303v-2.02c0-3.63 2.4-6.76 5.89-7.57 0.599-0.101 1.2-0.202 1.8-0.202 2.89 0 5.49 1.62 6.79 4.24l0.598 1.21 1.3-0.504c0.599-0.202 1.3-0.303 2-0.303 1.3 0 2.5 0.404 3.59 1.11 1.6 1.21 2.6 3.13 2.6 5.15v1.61h2c2.6 0 4.69 2.12 4.69 4.74-0.099 2.52-2.2 4.64-4.79 4.64z"/>
+            <path d="m53.2 49.2h-41.6c-1.8 0-3.2 1.4-3.2 3.2v28.6c0 1.8 1.4 3.2 3.2 3.2h15.8v4h-7v6h24v-6h-7v-4h15.8c1.8 0 3.2-1.4 3.2-3.2v-28.6c0-1.8-1.4-3.2-3.2-3.2zm-2.8 29h-36v-23h36z"/>
+            <path d="m73 49.2c1.02 1.29 1.53 2.97 1.53 4.56 0 2.97-1.74 5.65-4.39 7.04v-4.06l-7.46 7.33 7.46 7.14v-4.06c7.66-1.98 12.2-9.61 10-17-0.102-0.297-0.205-0.595-0.307-0.892z"/>
+            <path d="m24.1 43c-0.817-0.991-1.53-2.97-1.53-4.56 0-2.97 1.74-5.65 4.39-7.04v4.06l7.46-7.33-7.46-7.14v4.06c-7.66 1.98-12.2 9.61-10 17 0.102 0.297 0.205 0.595 0.307 0.892z"/>
+           </g>`
+        );
+        addIcon(
+            "view-log",
+            `<g transform="matrix(1.28 0 0 1.28 -131 -411)" fill="currentColor" fill-rule="evenodd">
+        <path d="m103 330h76v12h-76z"/>
+        <path d="m106 346v44h70v-44zm45 16h-20v-8h20z"/>
+       </g>`
+        );
+        await Promise.all(this.addOns.map(e => e.onload()));
+        this.addRibbonIcon("replicate", "Replicate", async () => {
+            await this.replicate(true);
+        });
+
+        this.addRibbonIcon("view-log", "Show log", () => {
+            this.showView(VIEW_TYPE_LOG);
+        });
+
+        this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
+        this.app.workspace.onLayoutReady(this.onLayoutReady.bind(this));
+
+        this.addCommand({
+            id: "livesync-replicate",
+            name: "Replicate now",
+            callback: async () => {
+                await this.replicate();
+            },
+        });
+        this.addCommand({
+            id: "livesync-dump",
+            name: "Dump information of this doc ",
+            editorCallback: (editor: Editor, view: MarkdownView) => {
+                this.localDatabase.getDBEntry(getPathFromTFile(view.file), {}, true, false);
+            },
+        });
+        this.addCommand({
+            id: "livesync-checkdoc-conflicted",
+            name: "Resolve if conflicted.",
+            editorCallback: async (editor: Editor, view: MarkdownView) => {
+                await this.showIfConflicted(getPathFromTFile(view.file));
+            },
+        });
+
+        this.addCommand({
+            id: "livesync-toggle",
+            name: "Toggle LiveSync",
+            callback: async () => {
+                if (this.settings.liveSync) {
+                    this.settings.liveSync = false;
+                    Logger("LiveSync Disabled.", LOG_LEVEL.NOTICE);
+                } else {
+                    this.settings.liveSync = true;
+                    Logger("LiveSync Enabled.", LOG_LEVEL.NOTICE);
+                }
+                await this.realizeSettingSyncMode();
+                this.saveSettings();
+            },
+        });
+        this.addCommand({
+            id: "livesync-suspendall",
+            name: "Toggle All Sync.",
+            callback: async () => {
+                if (this.suspended) {
+                    this.suspended = false;
+                    Logger("Self-hosted LiveSync resumed", LOG_LEVEL.NOTICE);
+                } else {
+                    this.suspended = true;
+                    Logger("Self-hosted LiveSync suspended", LOG_LEVEL.NOTICE);
+                }
+                await this.realizeSettingSyncMode();
+                this.saveSettings();
+            },
+        });
+        this.addCommand({
+            id: "livesync-history",
+            name: "Show history",
+            editorCallback: (editor: Editor, view: MarkdownView) => {
+                this.showHistory(view.file, null);
+            },
+        });
+        this.addCommand({
+            id: "livesync-scan-files",
+            name: "Scan storage and database again",
+            callback: async () => {
+                await this.syncAllFiles(true)
+            }
+        })
+
+        this.triggerRealizeSettingSyncMode = debounce(this.triggerRealizeSettingSyncMode.bind(this), 1000);
+
+        this.addCommand({
+            id: "livesync-filehistory",
+            name: "Pick a file to show history",
+            callback: () => {
+                this.fileHistory();
+            },
+        });
+        this.addCommand({
+            id: "livesync-conflictcheck",
+            name: "Pick a file to resolve conflict",
+            callback: () => {
+                this.pickFileForResolve();
+            },
+        })
+        this.addCommand({
+            id: "livesync-all-conflictcheck",
+            name: "Resolve all conflicted files",
+            callback: async () => {
+                while (await this.pickFileForResolve());
+            },
+        })
+        this.addCommand({
+            id: "livesync-runbatch",
+            name: "Run pended batch processes",
+            callback: async () => {
+                await this.applyBatchChange();
+            },
+        })
+        this.addCommand({
+            id: "livesync-abortsync",
+            name: "Abort synchronization immediately",
+            callback: () => {
+                this.replicator.terminateSync();
+            },
+        })
+
+        this.registerView(
+            VIEW_TYPE_GLOBAL_HISTORY,
+            (leaf) => new GlobalHistoryView(leaf, this)
+        );
+        this.registerView(
+            VIEW_TYPE_LOG,
+            (leaf) => new LogPaneView(leaf, this)
+        );
+        this.addCommand({
+            id: "livesync-global-history",
+            name: "Show vault history",
+            callback: () => {
+                this.showGlobalHistory()
+            }
+        })
     }
     async showView(viewType: string) {
         const leaves = this.app.workspace.getLeavesOfType(viewType);
@@ -543,6 +698,22 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         this.showView(VIEW_TYPE_GLOBAL_HISTORY);
     }
 
+    onunload() {
+        for (const addOn of this.addOns) {
+            addOn.onunload();
+        }
+        if (this.localDatabase != null) {
+            this.localDatabase.onunload();
+        }
+        this.periodicSyncProcessor?.disable();
+        if (this.localDatabase != null) {
+            this.replicator.closeReplication();
+            this.localDatabase.close();
+        }
+        cancelAllPeriodicTask();
+        cancelAllTasks();
+        Logger("unloading plugin");
+    }
 
     async openDatabase() {
         if (this.localDatabase != null) {
@@ -570,7 +741,22 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         return methodFunc();
     }
 
-
+    async decryptConfigurationItem(encrypted: string, passphrase: string) {
+        const dec = await tryDecrypt(encrypted, passphrase + SALT_OF_PASSPHRASE, false);
+        if (dec) {
+            this.usedPassphrase = passphrase;
+            return dec;
+        }
+        return false;
+    }
+    tryDecodeJson(encoded: string | false): object | false {
+        try {
+            if (!encoded) return false;
+            return JSON.parse(encoded);
+        } catch (ex) {
+            return false;
+        }
+    }
 
     async encryptConfigurationItem(src: string, settings: ObsidianLiveSyncSettings) {
         if (this.usedPassphrase != "") {
@@ -591,6 +777,67 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         return "";
     }
 
+    async loadSettings() {
+        const settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData()) as ObsidianLiveSyncSettings;
+        const passphrase = await this.getPassphrase(settings);
+        if (passphrase === false) {
+            Logger("Could not determine passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL.URGENT);
+        } else {
+            if (settings.encryptedCouchDBConnection) {
+                const keys = ["couchDB_URI", "couchDB_USER", "couchDB_PASSWORD", "couchDB_DBNAME"] as (keyof CouchDBConnection)[];
+                const decrypted = this.tryDecodeJson(await this.decryptConfigurationItem(settings.encryptedCouchDBConnection, passphrase)) as CouchDBConnection;
+                if (decrypted) {
+                    for (const key of keys) {
+                        if (key in decrypted) {
+                            settings[key] = decrypted[key]
+                        }
+                    }
+                } else {
+                    Logger("Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL.URGENT);
+                    for (const key of keys) {
+                        settings[key] = "";
+                    }
+                }
+            }
+            if (settings.encrypt && settings.encryptedPassphrase) {
+                const encrypted = settings.encryptedPassphrase;
+                const decrypted = await this.decryptConfigurationItem(encrypted, passphrase);
+                if (decrypted) {
+                    settings.passphrase = decrypted;
+                } else {
+                    Logger("Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL.URGENT);
+                    settings.passphrase = "";
+                }
+            }
+
+        }
+        this.settings = settings;
+
+        if ("workingEncrypt" in this.settings) delete this.settings.workingEncrypt;
+        if ("workingPassphrase" in this.settings) delete this.settings.workingPassphrase;
+
+        // Delete this feature to avoid problems on mobile.
+        this.settings.disableRequestURI = true;
+
+        // GC is disabled.
+        this.settings.gcDelay = 0;
+        // So, use history is always enabled.
+        this.settings.useHistory = true;
+
+        const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.getVaultName();
+        if (this.settings.deviceAndVaultName != "") {
+            if (!localStorage.getItem(lsKey)) {
+                this.deviceAndVaultName = this.settings.deviceAndVaultName;
+                localStorage.setItem(lsKey, this.deviceAndVaultName);
+                this.settings.deviceAndVaultName = "";
+            }
+        }
+        if (isCloudantURI(this.settings.couchDB_URI) && this.settings.customChunkSize != 0) {
+            Logger("Configuration verification founds problems with your configuration. This has been fixed automatically. But you may already have data that cannot be synchronised. If this is the case, please rebuild everything.", LOG_LEVEL.NOTICE)
+            this.settings.customChunkSize = 0;
+        }
+        this.deviceAndVaultName = localStorage.getItem(lsKey) || "";
+    }
 
     triggerRealizeSettingSyncMode() {
         (async () => await this.realizeSettingSyncMode())();
@@ -1789,7 +2036,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         if ((isSensibleMargeApplicable(path) || isObjectMargeApplicable(path)) && !this.settings.disableMarkdownAutoMerge) {
             const conflictedRev = conflicts[0];
             const conflictedRevNo = Number(conflictedRev.split("-")[0]);
-            //Search
+            //Search 
             const revFrom = (await this.localDatabase.getRaw<EntryDoc>(await this.path2id(path), { revs_info: true }));
             const commonBase = revFrom._revs_info.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first()?.rev ?? "";
             let p = undefined;

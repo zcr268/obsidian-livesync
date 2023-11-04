@@ -7,6 +7,7 @@
     "scripts": {
         "dev": "node esbuild.config.mjs",
         "build": "node esbuild.config.mjs production",
+        "build_test": "node esbuild.config.mjs production & copy main.js D:\\software\\Obsidian-Work\\test\\test\\.obsidian\\plugins\\obsidian-livesync & copy styles.css D:\\software\\Obsidian-Work\\test\\test\\.obsidian\\plugins\\obsidian-livesync & copy manifest.json D:\\software\\Obsidian-Work\\test\\test\\.obsidian\\plugins\\obsidian-livesync",
         "lint": "eslint src"
     },
     "keywords": [],
