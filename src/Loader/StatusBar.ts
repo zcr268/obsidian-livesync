@@ -1,5 +1,5 @@
 import {BaseLoader, LoaderManager} from './BaseLoader'
-import {scheduleTask} from '../utils'
+import {TimerTask} from '../Utils/TimerTask'
 
 export class StatusBar extends BaseLoader {
   static bar: StatusBar
@@ -18,7 +18,7 @@ export class StatusBar extends BaseLoader {
     const newStatus = typeof status == 'string' ? status : this.status
     const newMsg = typeof msg == 'string' ? msg : this.msg
     if (`${this.status}-${this.msg}` != `${newStatus}-${newMsg}`) {
-      scheduleTask('update-display', 50, () => {
+      TimerTask.scheduleTask('update-display', 50, () => {
         this.statusBar.setText(newStatus.split('\n')[0])
 
         if (this.settings.showStatusOnEditor) {
@@ -30,8 +30,8 @@ export class StatusBar extends BaseLoader {
           const q = root.querySelectorAll(`.view-content:has(.cm-s-obsidian>.cm-editor)`)
           q.forEach(e => e.setAttr('data-log', ''))
         }
-      }, true)
-      scheduleTask('log-hide', 3000, () => this.setStatusBarText(null, ''))
+      }, false )
+      TimerTask.scheduleTask('log-hide', 3000, () => this.setStatusBarText(null, ''))
       this.status = newStatus
       this.msg = newMsg
     }
