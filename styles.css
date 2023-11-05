@@ -52,8 +52,8 @@
 }
 
 .syncstatusbar {
-    -webkit-filter: grayscale(100%);
-    filter: grayscale(100%);
+    -webkit-filter: grayscale(0%);
+    filter: grayscale(0%);
 }
 
 .tcenter {
@@ -112,10 +112,10 @@
     display: inline-block;
     top: 4rem;
     right: 2rem;
-    opacity: 0.5;
+    opacity: 0.8;
     font-size: 80%;
-    -webkit-filter: grayscale(100%);
-    filter: grayscale(100%);
+    -webkit-filter: grayscale(0%);
+    filter: grayscale(0%);
 }
 
 .canvas-wrapper::before {

@@ -1,14 +1,19 @@
-import {Settings} from '../../Loader/Settings'
+import { Settings } from '../Settings'
 
 export enum Tips {
+    CANNOT_LOAD_PASSPHRASE,
+    CANNOT_DECRYPT_PASSPHRASE,
+    CLOUDANT_SETTINGS_ERROR,
+    NOT_SURE_SAVE_SETTINGS,
+    SETTINGS_NOT_SAFE,
 }
 
 const map: Map<string, LanguageInstance> = new Map<string, LanguageInstance>()
 
 
 export function _(t: Tips) {
-  const name: string = Settings.s?.language || 'chinese'
-  return map.get(name).switcher[t]
+    const name: string = Settings.settings()?.language || 'chinese'
+    return map.get(name).switcher[t]
 }
 
 export function registryLanguage(name: string, switcher: Switcher) {

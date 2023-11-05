@@ -1,9 +1,20 @@
-import {StatusBar} from './Loader/StatusBar'
-
-const isDebug = false;
-
-import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "./deps";
-import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl } from "./deps";
+import { StatusBar } from './Loader/StatusBar'
+import {
+    type Diff,
+    DIFF_DELETE,
+    DIFF_EQUAL,
+    DIFF_INSERT,
+    diff_match_patch,
+    Notice,
+    Plugin,
+    TFile,
+    TFolder,
+    normalizePath,
+    TAbstractFile,
+    type RequestUrlParam,
+    type RequestUrlResponse,
+    requestUrl,
+} from './deps'
 import {
     type EntryDoc,
     type LoadedEntry,
@@ -15,9 +26,7 @@ import {
     type diff_result,
     FLAGMD_REDFLAG,
     SYNCINFO_ID,
-    SALT_OF_PASSPHRASE,
     type ConfigPassphraseStore,
-    type CouchDBConnection,
     FLAGMD_REDFLAG2,
     FLAGMD_REDFLAG3,
     PREFIXMD_LOGFILE,
@@ -28,37 +37,74 @@ import {
     type FilePath,
     type AnyEntry,
 } from './lib/src/types'
-import { type InternalFileInfo, type queueItem, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
-import { arrayToChunkedArray, getDocData, isDocContentSame } from "./lib/src/utils";
-import { Logger, setGlobalLogFunction } from "./lib/src/logger";
-import { PouchDB } from "./lib/src/pouchdb-browser.js";
-import { ConflictResolveModal } from "./ConflictResolveModal";
-import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
-import { DocumentHistoryModal } from "./DocumentHistoryModal";
-import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, createFile, modifyFile, isValidPath, getAbstractFileByPath, touch, recentlyTouched, isInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, clearTouched, getPath, getPathWithoutPrefix, getPathFromTFile, localDatabaseCleanUp, balanceChunks, performRebuildDB } from "./utils";
-import { encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
-import { enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI } from "./lib/src/utils_couchdb";
-import { getGlobalStore, ObservableStore, observeStores } from "./lib/src/store";
-import { lockStore, logMessageStore, logStore, type LogEntry } from "./lib/src/stores";
-import { setNoticeClass } from "./lib/src/wrapper";
-import { base64ToString, versionNumberString2Number, base64ToArrayBuffer, arrayBufferToBase64 } from "./lib/src/strbin";
-import { addPrefix, isPlainText, shouldBeIgnored, stripAllPrefixes } from "./lib/src/path";
-import { runWithLock } from "./lib/src/lock";
-import { Semaphore } from "./lib/src/semaphore";
-import { StorageEventManager, StorageEventManagerObsidian } from "./StorageEventManager";
-import { LiveSyncLocalDB, type LiveSyncLocalDBEnv } from "./lib/src/LiveSyncLocalDB";
-import { LiveSyncDBReplicator, type LiveSyncReplicatorEnv } from "./lib/src/LiveSyncReplicator";
-import { type KeyValueDatabase, OpenKeyValueDatabase } from "./KeyValueDB";
-import { LiveSyncCommands } from "./LiveSyncCommands";
-import { HiddenFileSync } from "./CmdHiddenFileSync";
-import { SetupLiveSync } from "./CmdSetupLiveSync";
-import { ConfigSync } from "./CmdConfigSync";
-import { confirmWithMessage } from "./dialogs";
-import { GlobalHistoryView, VIEW_TYPE_GLOBAL_HISTORY } from "./GlobalHistoryView";
-import { LogPaneView, VIEW_TYPE_LOG } from "./LogPaneView";
-import { mapAllTasksWithConcurrencyLimit, processAllTasksWithConcurrencyLimit } from "./lib/src/task";
-import {LoaderManager} from './Loader/BaseLoader'
-import {Settings, type ObsidianLiveSyncSettings, DEFAULT_SETTINGS} from './Base/Settings'
+import {
+    type InternalFileInfo,
+    type queueItem,
+    type CacheData,
+    type FileEventItem,
+    FileWatchEventQueueMax,
+} from './types'
+import { arrayToChunkedArray, getDocData, isDocContentSame } from './lib/src/utils'
+import { Logger, setGlobalLogFunction } from './lib/src/logger'
+import { PouchDB } from './lib/src/pouchdb-browser.js'
+import { ConflictResolveModal } from './ConflictResolveModal'
+import { DocumentHistoryModal } from './DocumentHistoryModal'
+import {
+    applyPatch,
+    cancelTask,
+    generatePatchObj,
+    id2path,
+    isObjectMargeApplicable,
+    isSensibleMargeApplicable,
+    flattenObject,
+    path2id,
+    scheduleTask,
+    tryParseJSON,
+    createFile,
+    modifyFile,
+    isValidPath,
+    getAbstractFileByPath,
+    touch,
+    recentlyTouched,
+    isInternalMetadata,
+    isPluginMetadata,
+    stripInternalMetadataPrefix,
+    isChunk,
+    askSelectString,
+    askYesNo,
+    askString,
+    PeriodicProcessor,
+    clearTouched,
+    getPath,
+    getPathWithoutPrefix,
+    getPathFromTFile,
+    localDatabaseCleanUp,
+    balanceChunks,
+    performRebuildDB,
+} from './utils'
+import { enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI } from './lib/src/utils_couchdb'
+import { getGlobalStore, ObservableStore, observeStores } from './lib/src/store'
+import { lockStore, logMessageStore, logStore, type LogEntry } from './lib/src/stores'
+import { setNoticeClass } from './lib/src/wrapper'
+import { base64ToString, base64ToArrayBuffer, arrayBufferToBase64 } from './lib/src/strbin'
+import { addPrefix, isPlainText, shouldBeIgnored, stripAllPrefixes } from './lib/src/path'
+import { runWithLock } from './lib/src/lock'
+import { Semaphore } from './lib/src/semaphore'
+import { StorageEventManager, StorageEventManagerObsidian } from './StorageEventManager'
+import { LiveSyncLocalDB, type LiveSyncLocalDBEnv } from './lib/src/LiveSyncLocalDB'
+import { LiveSyncDBReplicator, type LiveSyncReplicatorEnv } from './lib/src/LiveSyncReplicator'
+import { type KeyValueDatabase, OpenKeyValueDatabase } from './KeyValueDB'
+import { LiveSyncCommands } from './LiveSyncCommands'
+import { HiddenFileSync } from './CmdHiddenFileSync'
+import { SetupLiveSync } from './CmdSetupLiveSync'
+import { ConfigSync } from './CmdConfigSync'
+import { confirmWithMessage } from './dialogs'
+import { VIEW_TYPE_GLOBAL_HISTORY } from './GlobalHistoryView'
+import { mapAllTasksWithConcurrencyLimit, processAllTasksWithConcurrencyLimit } from './lib/src/task'
+import { LoaderManager } from './Loader/BaseLoader'
+import { Settings, type ObsidianLiveSyncSettings } from './Base/Settings'
+
+const isDebug = false
 
 setNoticeClass(Notice);
 
@@ -507,11 +553,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
     async onload() {
         await LoaderManager.onloadAll(this)
-
+        const list = '🔴 🔵 ⏪ ⏩ 💤 🌀 ⁉ ☁ 💭 💻 ⚠ ⛔ 🚫'.split(' ')
         const apply = () => {
             const now = new Date().getTime()
             Logger(`当前msg:${now}\ntest:msg`)
-            StatusBar.bar.setStatusBarText(`当前msg:${now}\ntest:msg`, `当前log:${now}\ntest:log`)
+            list.push(list.shift())
+            StatusBar.bar.setStatusBarText(list.join(''), `当前msg:${now}\ntest:msg`)
             setTimeout(apply, 5000)
         }
         apply()
@@ -571,61 +618,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
 
 
-
-    async encryptConfigurationItem(src: string, settings: ObsidianLiveSyncSettings) {
-        if (this.usedPassphrase != "") {
-            return await encrypt(src, this.usedPassphrase + SALT_OF_PASSPHRASE, false);
-        }
-
-        const passphrase = await this.getPassphrase(settings);
-        if (passphrase === false) {
-            Logger("Could not determine passphrase to save data.json! You probably make the configuration sure again!", LOG_LEVEL.URGENT);
-            return "";
-        }
-        const dec = await encrypt(src, passphrase + SALT_OF_PASSPHRASE, false);
-        if (dec) {
-            this.usedPassphrase = passphrase;
-            return dec;
-        }
-
-        return "";
-    }
-
-
     triggerRealizeSettingSyncMode() {
         (async () => await this.realizeSettingSyncMode())();
     }
 
-    async saveSettings() {
-        const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.getVaultName();
 
-        localStorage.setItem(lsKey, this.deviceAndVaultName || "");
-        const settings = { ...this.settings };
-        if (this.usedPassphrase == "" && !await this.getPassphrase(settings)) {
-            Logger("Could not determine passphrase for saving data.json! Our data.json have insecure items!", LOG_LEVEL.NOTICE);
-        } else {
-            if (settings.couchDB_PASSWORD != "" || settings.couchDB_URI != "" || settings.couchDB_USER != "" || settings.couchDB_DBNAME) {
-                const connectionSetting: CouchDBConnection = {
-                    couchDB_DBNAME: settings.couchDB_DBNAME,
-                    couchDB_PASSWORD: settings.couchDB_PASSWORD,
-                    couchDB_URI: settings.couchDB_URI,
-                    couchDB_USER: settings.couchDB_USER,
-                };
-                settings.encryptedCouchDBConnection = await this.encryptConfigurationItem(JSON.stringify(connectionSetting), settings);
-                settings.couchDB_PASSWORD = "";
-                settings.couchDB_DBNAME = "";
-                settings.couchDB_URI = "";
-                settings.couchDB_USER = "";
-            }
-            if (settings.encrypt && settings.passphrase != "") {
-                settings.encryptedPassphrase = await this.encryptConfigurationItem(settings.passphrase, settings);
-                settings.passphrase = "";
-            }
-        }
-        await this.saveData(settings);
-        this.localDatabase.settings = this.settings;
-        this.triggerRealizeSettingSyncMode();
-    }
 
     vaultManager: StorageEventManager;
     registerFileWatchEvents() {
