@@ -103,6 +103,7 @@ import { VIEW_TYPE_GLOBAL_HISTORY } from './GlobalHistoryView'
 import { mapAllTasksWithConcurrencyLimit, processAllTasksWithConcurrencyLimit } from './lib/src/task'
 import { LoaderManager } from './Loader/BaseLoader'
 import { Settings, type ObsidianLiveSyncSettings } from './Base/Settings'
+import {ExecutorQueue} from './Utils/ExecutorQueue'
 
 const isDebug = false
 
