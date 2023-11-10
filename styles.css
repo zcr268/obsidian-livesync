@@ -99,8 +99,9 @@
 }
 
 
-.cm-s-obsidian>.cm-editor::before,
-.markdown-reading-view>.markdown-rendered::before,
+/*.cm-s-obsidian>.cm-editor::before,*/
+/*.markdown-reading-view>.markdown-rendered::before,*/
+.view-content:has(.empty-state)::before,
 .view-content:has(.cm-s-obsidian>.cm-editor)::before
 {
     content: attr(data-log);

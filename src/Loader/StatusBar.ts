@@ -20,17 +20,16 @@ export class StatusBar extends BaseLoader {
     if (`${this.status}-${this.msg}` != `${newStatus}-${newMsg}`) {
       TimerTask.scheduleTask('update-display', 50, () => {
         this.statusBar.setText(newStatus.split('\n')[0])
-
         if (this.settings.showStatusOnEditor) {
           const root = activeDocument.documentElement
-          const q = root.querySelectorAll(`.view-content:has(.cm-s-obsidian>.cm-editor)`)
+          const q = root.querySelectorAll(`.view-content:has(.empty-state),.view-content:has(.cm-s-obsidian>.cm-editor)`)
           q.forEach(e => e.setAttr('data-log', '' + (newStatus + '\n' + newMsg) + ''))
         } else {
           const root = activeDocument.documentElement
-          const q = root.querySelectorAll(`.view-content:has(.cm-s-obsidian>.cm-editor)`)
+          const q = root.querySelectorAll(`.view-content:has(.empty-state).view-content:has(.cm-s-obsidian>.cm-editor)`)
           q.forEach(e => e.setAttr('data-log', ''))
         }
-      }, false )
+      }, false)
       TimerTask.scheduleTask('log-hide', 3000, () => this.setStatusBarText(null, ''))
       this.status = newStatus
       this.msg = newMsg

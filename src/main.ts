@@ -553,13 +553,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
     async onload() {
         await LoaderManager.onloadAll(this)
-        const list = '🔴 🔵 ⏪ ⏩ 💤 🌀 ⁉ ☁ 💭 💻 ⚠ ⛔ 🚫'.split(' ')
+        // const list = '🔴 🔵 ⏪ ⏩ 💤 🌀 ⁉ ☁ 💭 💻 ⚠ ⛔ 🚫'.split(' ')
+        const list = '🌕 🌖 🌗 🌘 🌑 🌒 🌓 🌔'.split(' ')
         const apply = () => {
             const now = new Date().getTime()
             Logger(`当前msg:${now}\ntest:msg`)
             list.push(list.shift())
-            StatusBar.bar.setStatusBarText(list.join(''), `当前msg:${now}\ntest:msg`)
-            setTimeout(apply, 5000)
+            StatusBar.bar.setStatusBarText(list[0], `当前msg:${now}\ntest:msg`)
+            setTimeout(apply, 100)
         }
         apply()
     }
