@@ -1,5 +1,3 @@
-import { Settings } from '../Settings'
-
 export enum Tips {
     CANNOT_LOAD_PASSPHRASE,
     CANNOT_DECRYPT_PASSPHRASE,
@@ -10,9 +8,13 @@ export enum Tips {
 
 const map: Map<string, LanguageInstance> = new Map<string, LanguageInstance>()
 
+let useLanguage: string | undefined = undefined
 
+export function use(language: string | undefined) {
+    useLanguage = language
+}
 export function _(t: Tips) {
-    const name: string = Settings.settings()?.language || 'chinese'
+    const name: string = useLanguage || 'chinese'
     return map.get(name).switcher[t]
 }
 

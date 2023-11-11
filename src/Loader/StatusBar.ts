@@ -1,15 +1,13 @@
-import {BaseLoader, LoaderManager} from './BaseLoader'
+import {BaseLoader, GlobalLoaderManager} from './BaseLoader'
 import {TimerTask} from '../Utils/TimerTask'
 
 export class StatusBar extends BaseLoader {
-  static bar: StatusBar
   statusBar: HTMLElement
   status: string
   msg: string
 
   onload(): void | Promise<void> {
-    StatusBar.bar = this
-    this.statusBar = this.liveSyncPlugin.addStatusBarItem()
+    this.statusBar = this.plugin.addStatusBarItem()
     this.statusBar.addClass('syncstatusbar')
   }
 
@@ -37,4 +35,4 @@ export class StatusBar extends BaseLoader {
   }
 }
 
-LoaderManager.registryLoader(e => new StatusBar(e))
+GlobalLoaderManager.registryLoader(StatusBar)

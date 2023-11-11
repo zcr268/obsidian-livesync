@@ -3,7 +3,7 @@ export enum LOG_LEVEL {
 }
 
 export class Logger {
-  static default_log_level = LOG_LEVEL.INFO
+  static default_log_level = LOG_LEVEL.DEBUG
 
 
   static err(msg: string) {
@@ -22,8 +22,12 @@ export class Logger {
     Logger._log(msg, LOG_LEVEL.DEBUG)
   }
 
+  static trace(msg: string) {
+    Logger._log(msg, LOG_LEVEL.TRACE)
+  }
+
   private static _log(msg: string, level: LOG_LEVEL = LOG_LEVEL.INFO) {
-    if (level <= Logger.default_log_level) {
+    if (level >= Logger.default_log_level) {
       console.log(msg)
     }
   }

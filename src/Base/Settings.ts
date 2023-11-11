@@ -3,7 +3,6 @@ import { SALT_OF_PASSPHRASE } from '../lib/src/types'
 import type ObsidianLiveSyncPlugin from '../main'
 import { askString } from '../utils'
 import { tryDecrypt } from '../lib/src/e2ee_v2'
-
 interface ObsidianLiveSyncSettings_PluginSetting {
     liveSync: boolean
     syncOnSave: boolean
@@ -126,19 +125,13 @@ export const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
 }
 
 export class Settings {
-    static s: Settings
     settings: ObsidianLiveSyncSettings = { ...DEFAULT_SETTINGS }
     plugin: ObsidianLiveSyncPlugin
     usedPassphrase: string
-    deviceAndVaultName: string
-
-    static settings(): ObsidianLiveSyncSettings {
-        return Settings.s?.settings
-    }
 
     constructor(plugin: ObsidianLiveSyncPlugin) {
         this.plugin = plugin
-        Settings.s = this
+        this.plugin.registerContext(Settings, this)
     }
 
     getPassphrase(settings: ObsidianLiveSyncSettings) {
@@ -179,3 +172,4 @@ export class Settings {
         await this.plugin.saveData(settings)
     }
 }
+

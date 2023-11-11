@@ -1,4 +1,5 @@
-export type QueueCall = () => Promise<void>
+export type QueueCall = (id: number) => Promise<void>
+type CallInfo = { id: number; call: QueueCall }
 
 enum State {
     end,
@@ -7,14 +8,26 @@ enum State {
     break,
 }
 export class ExecutorQueue {
-    private queue: QueueCall[] = []
+    private queue: CallInfo[] = []
+    private selfIncrementingId = 0
     private state: State = State.end
     private finished: Promise<void> = Promise.resolve()
-    private done: (value: void | PromiseLike<void>) => void = undefined
+    private finishResolve: (value: void | PromiseLike<void>) => void = undefined
+    private paused: Promise<void> = Promise.resolve()
+    private pausedResolve: (value: void | PromiseLike<void>) => void = undefined
 
-    public add(func: QueueCall) {
-        this.queue.push(func)
-        this.resume()
+    public tail(call: QueueCall) {
+        const id = this.selfIncrementingId++
+        this.queue.push({ id, call })
+        this.resume([State.end])
+        return id
+    }
+
+    public head(call: QueueCall) {
+        const id = this.selfIncrementingId++
+        this.queue.unshift({ id, call })
+        this.resume([State.end])
+        return id
     }
 
     public watchFinished() {
@@ -23,6 +36,10 @@ export class ExecutorQueue {
 
     public pause() {
         this.state = State.pause
+        if (this.pausedResolve == undefined) {
+            this.paused = new Promise<void>((resolve) => (this.pausedResolve = resolve))
+        }
+        return this.paused
     }
 
     public break() {
@@ -30,11 +47,17 @@ export class ExecutorQueue {
         return this.watchFinished()
     }
 
-    public resume() {
-        if (this.state == State.end || this.state == State.pause) {
+    public resume(resumeState: [State.end, State.pause] | [State.end] | [State.pause] = [State.pause]) {
+        if (this.state in resumeState) {
             this.state = State.running
             this.run().then(console.log)
+            return true
         }
+        return false
+    }
+
+    public removeById(id: number) {
+        this.queue = this.queue.filter((e) => e.id != id)
     }
 
     public size() {
@@ -42,21 +65,26 @@ export class ExecutorQueue {
     }
 
     private async run() {
-        if (this.done == undefined) {
-            this.finished = new Promise<void>((resolve) => (this.done = resolve))
+        if (this.finishResolve == undefined) {
+            this.finished = new Promise<void>((resolve) => (this.finishResolve = resolve))
         }
         while (this.queue.length > 0) {
             if (this.state != State.running) {
                 break
             }
-            await this.queue.shift()()
+            const info = this.queue.shift()
+            await info.call(info.id)
         }
         if (this.state == State.break) {
             this.queue = []
         }
+        if (this.state == State.pause) {
+            this.pausedResolve()
+            this.pausedResolve = undefined
+        }
         if (this.queue.length == 0) {
-            this.done()
-            this.done = undefined
+            this.finishResolve()
+            this.finishResolve = undefined
             this.state = State.end
         }
     }
