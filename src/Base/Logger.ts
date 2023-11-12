@@ -10,6 +10,10 @@ export class Logger {
     Logger._log(msg, LOG_LEVEL.ERROR)
   }
 
+  static error(msg: string) {
+    Logger._log(msg, LOG_LEVEL.ERROR)
+  }
+
   static warn(msg: string) {
     Logger._log(msg, LOG_LEVEL.WARN)
   }

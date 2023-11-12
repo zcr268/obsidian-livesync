@@ -3,8 +3,9 @@ import { Logger } from '../Base/Logger'
 import { Settings } from '../Base/Settings'
 import { BaseLoader, GlobalLoaderManager } from './BaseLoader'
 import { Context, type Class } from '../Base/Context'
-import { type FilePath } from '../lib/src/types'
 import { StatusBar } from './StatusBar'
+import { Json } from '../Utils/Json'
+import PouchDB from 'pouchdb'
 
 export class SyncTaskManager extends BaseLoader {
     private mainQueue: ExecutorQueue = new ExecutorQueue()
@@ -40,23 +41,49 @@ export class SyncTaskManager extends BaseLoader {
     }
 
     onload(): void | Promise<void> {
-        // const list = '🔴 🔵 ⏪ ⏩ 💤 🌀 ⁉ ☁ 💭 💻 ⚠ ⛔ 🚫'.split(' ')
-        // const list = '🌕 🌖 🌗 🌘 🌑 🌒 🌓 🌔'.split(' ')
-        const list = '🌕 🌔 🌓 🌒 🌑 🌘 🌗 🌖'.split(' ')
-        let list2 = this.app.vault.getFiles()
-        const apply = () => {
-            const now = new Date().getTime()
-            Logger.trace(`当前msg:${now}\ntest:msg`)
-            list.push(list.shift())
-            if (list2.length == 0) {
-                list2 = this.app.vault.getFiles()
+        return new Promise<void>(async (resolve, reject) => {
+            try {
+                // const list = '🔴 🔵 ⏪ ⏩ 💤 🌀 ⁉ ☁ 💭 💻 ⚠ ⛔ 🚫'.split(' ')
+                // const list = '🌕 🌖 🌗 🌘 🌑 🌒 🌓 🌔'.split(' ')
+                const list = '🌕 🌔 🌓 🌒 🌑 🌘 🌗 🌖'.split(' ')
+                const apply = () => {
+                    const now = new Date().getTime()
+                    Logger.trace(`当前msg:${now}\ntest:msg`)
+                    list.push(list.shift())
+
+                    this.plugin.get(StatusBar)?.setStatusBarText(list[0], null)
+                    setTimeout(apply, 100)
+                }
+                apply()
+                const localDB = new PouchDB('test')
+                const handle = localDB.changes({
+                    since: 'now',
+                    live: true,
+                })
+                // await localDB.get('local_seq')
+                handle
+                    .on('change', (change) => {
+                        Logger.info(`localDB change:${Json.tryEncodeJson(change)}`)
+                    })
+                    .on('error', (error) => {
+                        Logger.err(`localDB error:${error}`)
+                    })
+
+                /**
+                 * 所有文件加载
+                 */
+                this.plugin.registerEvent(
+                    // @ts-ignore
+                    this.app.vault.on('raw', (fullFilePath) => {
+                        Logger.info(`${fullFilePath} changed`)
+                    })
+                )
+            } catch (error) {
+                Logger.err(error)
+                return reject(error)
             }
-            const msg = (list2.shift()?.path as FilePath) ?? ''
-            this.plugin.get(StatusBar)?.setStatusBarText(list[0], `当前msg:${now}\nfileName:${msg}`)
-            setTimeout(apply, 100)
-        }
-        apply()
-        return undefined
+            return resolve()
+        })
     }
 }
 

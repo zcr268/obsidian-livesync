@@ -7,4 +7,13 @@ export class Json {
       return false
     }
   }
+
+  static tryEncodeJson(obj: any): string | false {
+    try {
+      if (!obj) return false
+      return JSON.stringify(obj)
+    } catch (ex) {
+      return false
+    }
+  }
 }
