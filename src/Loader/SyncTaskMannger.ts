@@ -60,7 +60,6 @@ export class SyncTaskManager extends BaseLoader {
                     since: 'now',
                     live: true,
                 })
-                // await localDB.get('local_seq')
                 handle
                     .on('change', (change) => {
                         Logger.info(`localDB change:${Json.tryEncodeJson(change)}`)
@@ -68,16 +67,6 @@ export class SyncTaskManager extends BaseLoader {
                     .on('error', (error) => {
                         Logger.err(`localDB error:${error}`)
                     })
-
-                /**
-                 * 所有文件加载
-                 */
-                this.plugin.registerEvent(
-                    // @ts-ignore
-                    this.app.vault.on('raw', (fullFilePath) => {
-                        Logger.info(`${fullFilePath} changed`)
-                    })
-                )
             } catch (error) {
                 Logger.err(error)
                 return reject(error)
