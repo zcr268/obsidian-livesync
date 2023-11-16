@@ -3,7 +3,7 @@ import { GetValue } from './GetRealValue'
 
 export class SegmentationText {
     static async *segment(data: ValueWrap<string>, size = -1): AsyncGenerator<string> {
-        let content = await GetValue.get(data)
+        let content = await GetValue.getAny(data)
         if (size > 0) {
             do {
                 // split to within maximum pieceSize

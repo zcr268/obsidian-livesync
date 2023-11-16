@@ -63,4 +63,10 @@ export class TimerTask {
       delete TimerTask.intervals[v]
     }
   }
+
+  static async delay(millisecond: number) {
+    return new Promise(resolve => {
+      setTimeout(resolve, millisecond)
+    })
+  }
 }
